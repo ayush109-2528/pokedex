@@ -26,6 +26,7 @@ const FILTER_TABS = [
   { key: "legendary", label: "Legendary" },
   { key: "mythical", label: "Mythical" },
   { key: "mega", label: "Mega Evolutions" },
+  { key: "gmax", label: "Gigantamax" }, // <--- new tab
   { key: "type", label: "Type" },
 ];
 
@@ -46,7 +47,7 @@ export default function App() {
 
   // Fetch all Pokémon, species, mega sprites and types
   useEffect(() => {
-    fetch("https://pokeapi.co/api/v2/pokemon?limit=1118")
+    fetch("https://pokeapi.co/api/v2/pokemon?limit=10000")
       .then((res) => res.json())
       .then(async (data) => {
         setAllPokemons(data.results);
@@ -118,9 +119,9 @@ export default function App() {
         (p) => speciesData[p.name] && speciesData[p.name].is_mythical
       );
     } else if (filterTab === "mega") {
-      filtered = filtered.filter((p) =>
-        p.name.toLowerCase().endsWith("-mega")
-      );
+      filtered = filtered.filter((p) => p.name.toLowerCase().endsWith("-mega"));
+    } else if (filterTab === "gmax") {
+      filtered = filtered.filter((p) => p.name.toLowerCase().endsWith("-gmax"));
     } else if (filterTab === "type" && selectedType) {
       fetch(typesData[selectedType])
         .then((res) => res.json())
@@ -210,6 +211,10 @@ export default function App() {
     if (filterTab === "mega" && megaSprites[name]) {
       return megaSprites[name];
     }
+    if (filterTab === "gmax" && megaSprites[name]) {
+      return megaSprites[name];
+    }
+
     const id = pokemonUrl.split("/").filter(Boolean).pop();
     return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
   };
@@ -485,7 +490,8 @@ export default function App() {
                       {selectedSpecies.egg_groups
                         .map(
                           (group) =>
-                            group.name.charAt(0).toUpperCase() + group.name.slice(1)
+                            group.name.charAt(0).toUpperCase() +
+                            group.name.slice(1)
                         )
                         .join(", ")}
                     </p>
