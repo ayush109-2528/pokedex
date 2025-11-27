@@ -44,7 +44,6 @@ export default function App() {
   const [filterTab, setFilterTab] = useState("all");
   const [basicStats, setBasicStats] = useState({});
 
-  // Fetch pokemons + species + mega sprites + types
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=1118")
       .then((res) => res.json())
@@ -52,7 +51,6 @@ export default function App() {
         setAllPokemons(data.results);
         setDisplayedPokemons(data.results.slice(0, 100));
 
-        // Fetch species + mega sprites mapping
         const speciesAndMega = await Promise.all(
           data.results.map(async (p) => {
             const pokemonRes = await fetch(p.url);
@@ -60,10 +58,9 @@ export default function App() {
             const speciesRes = await fetch(pokemon.species.url);
             const species = await speciesRes.json();
 
-            // Find mega sprites varieties
             const megaForms = await Promise.all(
               species.varieties
-                .filter((v) => v.pokemon.name.includes("mega"))
+                .filter((v) => v.pokemon.name.toLowerCase().includes("mega"))
                 .map(async (v) => {
                   const megaRes = await fetch(v.pokemon.url);
                   const megaData = await megaRes.json();
@@ -75,22 +72,25 @@ export default function App() {
                   };
                 })
             );
+
             return { species, megaForms, name: p.name };
           })
         );
+
         const speciesMap = {};
         const megaSpriteMap = {};
         speciesAndMega.forEach(({ species, megaForms, name }) => {
           speciesMap[name] = species;
           if (megaForms.length > 0) {
-            // store first mega form sprite for the base
-            megaSpriteMap[name] = megaForms[0].sprite;
+            megaForms.forEach((form) => {
+              megaSpriteMap[form.name] = form.sprite;
+            });
           }
         });
+
         setSpeciesData(speciesMap);
         setMegaSprites(megaSpriteMap);
 
-        // Load types
         const typesRes = await fetch("https://pokeapi.co/api/v2/type");
         const typesData = await typesRes.json();
         const typesMap = {};
@@ -101,7 +101,6 @@ export default function App() {
       });
   }, []);
 
-  // Filter pokemons with mega, legendary, mythical, type, search
   useEffect(() => {
     let filtered = allPokemons;
 
@@ -114,8 +113,9 @@ export default function App() {
         (p) => speciesData[p.name] && speciesData[p.name].is_mythical
       );
     } else if (filterTab === "mega") {
-      filtered = filtered.filter(
-        (p) => megaSprites[p.name] !== undefined
+      // Filter only names that exactly end with "-mega" (case-insensitive)
+      filtered = filtered.filter((p) =>
+        p.name.toLowerCase().endsWith("-mega")
       );
     } else if (filterTab === "type" && selectedType) {
       fetch(typesData[selectedType])
@@ -153,7 +153,6 @@ export default function App() {
     typesData,
   ]);
 
-  // Fetch hover basic stats caching
   const fetchBasicStats = (url, name) => {
     if (basicStats[name]) return;
     fetch(url)
@@ -169,7 +168,6 @@ export default function App() {
       });
   };
 
-  // Fetch detailed info + species for modal
   const fetchPokemonDetails = (url) => {
     setLoadingDetails(true);
     fetch(url)
@@ -192,7 +190,6 @@ export default function App() {
     setSelectedSpecies(null);
   };
 
-  // Determine glitter CSS class based on rarity
   const getGlitterClass = (name) => {
     if (!speciesData[name]) return "glitter-default";
     if (speciesData[name].is_legendary) return "glitter-gold";
@@ -201,11 +198,24 @@ export default function App() {
     return "glitter-default";
   };
 
+  const getSpriteUrl = (name, pokemonUrl) => {
+    // Mega sprites fallback - show base official artwork if mega or base sprite missing
+    if (filterTab === "mega" && megaSprites[name]) {
+      return megaSprites[name];
+    }
+    const id = pokemonUrl.split("/").filter(Boolean).pop();
+    return `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto relative font-sans bg-gradient-to-tr from-purple-600 via-pink-600 to-red-600 min-h-screen text-gray-900">
-      <h1 className="text-5xl font-extrabold mb-6 text-center text-white drop-shadow-lg">
+      <h1 className="text-5xl font-extrabold mb-1 text-center text-white drop-shadow-lg">
         Pokédex
       </h1>
+      {/* Total Pokémon count */}
+      <p className="mb-6 text-center text-white font-semibold text-lg">
+        Total Pokémon: {allPokemons.length}
+      </p>
 
       {/* Filter Tabs */}
       <nav className="flex justify-center space-x-4 mb-6 flex-wrap gap-2">
@@ -243,7 +253,7 @@ export default function App() {
         )}
       </nav>
 
-      {/* Search */}
+      {/* Search Bar */}
       <div className="max-w-md mx-auto mb-8">
         <input
           type="text"
@@ -262,13 +272,7 @@ export default function App() {
           </p>
         )}
         {displayedPokemons.map(({ name, url }) => {
-          const id = url.split("/").filter(Boolean).pop();
-          const isMegaTab = filterTab === "mega";
-          // Use Mega sprite if available and mega tab active
-          const spriteUrl =
-            isMegaTab && megaSprites[name]
-              ? megaSprites[name]
-              : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+          const spriteUrl = getSpriteUrl(name, url);
           const stats = basicStats[name] || {};
           const glitterClass = getGlitterClass(name);
 
@@ -291,7 +295,7 @@ export default function App() {
                 {name}
               </div>
 
-              {/* Hover overlay */}
+              {/* Hover basics overlay */}
               <div className="absolute inset-0 bg-gradient-to-t from-pink-900 via-purple-800 to-transparent opacity-0 group-hover:opacity-90 transition-opacity flex flex-col justify-center items-center p-4 text-white text-center pointer-events-none z-10 rounded-xl">
                 {BASIC_STATS.map((stat) => (
                   <div key={stat} className="capitalize text-sm mb-1">
@@ -313,63 +317,62 @@ export default function App() {
             onClick={closeModal}
           />
           <div className="fixed inset-0 flex items-center justify-center z-50 p-6">
-            <div className="relative bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto text-gray-900 p-8 font-sans">
+            <div className="relative bg-gradient-to-br from-purple-300 via-pink-300 to-red-200 rounded-3xl shadow-2xl max-w-sm w-full max-h-[90vh] overflow-y-auto text-gray-900 p-6 font-sans border-8 border-pink-500 flex flex-col items-center">
               <button
                 onClick={closeModal}
-                className="absolute top-5 right-5 text-gray-700 hover:text-pink-600 transition text-3xl font-bold"
+                className="absolute top-4 right-4 text-pink-700 hover:text-red-700 transition text-4xl font-bold z-50"
                 aria-label="Close modal"
               >
                 &times;
               </button>
 
-              <div className="flex flex-col md:flex-row md:space-x-8">
-                <div>
-                  <img
-                    src={
-                      selectedPokemon.sprites.other["official-artwork"]
-                        .front_default || selectedPokemon.sprites.front_default
-                    }
-                    alt={selectedPokemon.name}
-                    className="w-48 h-48 object-contain rounded-2xl shadow-lg mx-auto md:mx-0"
-                  />
-                  <h2 className="text-4xl font-extrabold capitalize mt-4 text-center md:text-left text-pink-600">
-                    {selectedPokemon.name}
-                  </h2>
-
-                  {/* Legendary/Mythical Badges */}
-                  <div className="mt-2 flex space-x-3 justify-center md:justify-start">
-                    {selectedSpecies.is_legendary && (
-                      <span className="px-3 py-1 rounded-full bg-yellow-400 text-yellow-900 font-bold uppercase shadow-md">
-                        Legendary
-                      </span>
-                    )}
-                    {selectedSpecies.is_mythical && (
-                      <span className="px-3 py-1 rounded-full bg-purple-600 text-white font-bold uppercase shadow-md">
-                        Mythical
-                      </span>
-                    )}
-                  </div>
+              <div className="relative w-48 h-48 rounded-xl shadow-lg border-4 border-pink-700 overflow-hidden mb-4 bg-white flex justify-center items-center">
+                <img
+                  src={
+                    selectedPokemon.sprites.other["official-artwork"]
+                      .front_default || selectedPokemon.sprites.front_default
+                  }
+                  alt={selectedPokemon.name}
+                  className="max-w-full max-h-full object-contain"
+                />
+                <div className="absolute top-2 left-2 flex space-x-2 z-20">
+                  {selectedSpecies.is_legendary && (
+                    <span className="px-2 py-1 rounded-full bg-yellow-400 text-yellow-900 font-bold uppercase text-xs shadow-md">
+                      Legendary
+                    </span>
+                  )}
+                  {selectedSpecies.is_mythical && (
+                    <span className="px-2 py-1 rounded-full bg-purple-700 text-white font-bold uppercase text-xs shadow-md">
+                      Mythical
+                    </span>
+                  )}
                 </div>
+              </div>
 
-                <div className="flex-1 mt-6 md:mt-0">
-                  {/* Modal Tabs */}
-                  <nav className="flex border-b border-gray-300 mb-6">
-                    {["stats", "details", "moves"].map((tab) => (
-                      <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`px-4 py-2 font-semibold text-gray-700 ${
-                          activeTab === tab
-                            ? "border-b-4 border-pink-600 text-pink-600"
-                            : "hover:text-pink-600"
-                        } focus:outline-none`}
-                      >
-                        {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                      </button>
-                    ))}
-                  </nav>
+              <h2 className="text-3xl font-extrabold capitalize text-pink-700 drop-shadow-md mb-3">
+                {selectedPokemon.name}
+              </h2>
 
-                  {activeTab === "stats" && (
+              {/* Tabs */}
+              <nav className="flex w-full justify-around border-b-4 border-pink-700 mb-4">
+                {["stats", "details", "moves", "more-info"].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`flex-1 py-2 text-center font-semibold ${
+                      activeTab === tab
+                        ? "text-white bg-pink-700 rounded-t-lg"
+                        : "text-pink-700 hover:bg-pink-600 hover:text-white"
+                    } transition`}
+                  >
+                    {tab.charAt(0).toUpperCase() + tab.slice(1).replace("-", " ")}
+                  </button>
+                ))}
+              </nav>
+
+              <div className="w-full min-h-[220px] px-2">
+                {activeTab === "stats" && (
+                  <>
                     <div>
                       {selectedPokemon.stats.map(({ stat, base_stat }) => (
                         <StatBar
@@ -380,65 +383,114 @@ export default function App() {
                         />
                       ))}
                     </div>
-                  )}
-
-                  {activeTab === "details" && (
-                    <div className="space-y-2 text-gray-800">
-                      <p>
-                        <strong>Base Experience:</strong>{" "}
-                        {selectedPokemon.base_experience}
-                      </p>
-                      <p>
-                        <strong>Height:</strong> {selectedPokemon.height}
-                      </p>
-                      <p>
-                        <strong>Weight:</strong> {selectedPokemon.weight}
-                      </p>
-                      <p className="capitalize">
-                        <strong>Abilities:</strong>{" "}
-                        {selectedPokemon.abilities
-                          .map((a) => a.ability.name)
-                          .join(", ")}
-                      </p>
-                      <div className="mt-4">
-                        <h3 className="text-lg font-semibold mb-2">Types</h3>
-                        <div className="flex flex-wrap gap-2">
-                          {selectedPokemon.types.map(({ type }) => (
-                            <span
-                              key={type.name}
-                              className="px-3 py-1 rounded-full bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-700 text-white font-semibold capitalize shadow-lg"
-                            >
-                              {type.name}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
+                    <div className="mt-6">
+                      <h4 className="text-lg font-semibold text-pink-700 mb-2">
+                        Sound of Pokémon
+                      </h4>
+                      <audio
+                        controls
+                        className="w-full rounded-lg shadow-inner focus:outline-none focus:ring-2 focus:ring-pink-400"
+                      >
+                        <source
+                          src={`https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${selectedPokemon.id}.ogg`}
+                          type="audio/ogg"
+                        />
+                        Your browser does not support the audio element.
+                      </audio>
                     </div>
-                  )}
+                  </>
+                )}
 
-                  {activeTab === "moves" && (
-                    <div className="max-h-48 overflow-y-auto text-gray-800 text-base">
-                      <h3 className="font-semibold mb-2">Moves (First 20):</h3>
-                      <ul className="list-disc list-inside space-y-1">
-                        {selectedPokemon.moves.slice(0, 20).map(({ move }) => (
-                          <li key={move.name} className="capitalize">
-                            {move.name}
-                          </li>
-                        ))}
-                      </ul>
+                {activeTab === "details" && (
+                  <div className="space-y-2 text-gray-800">
+                    <p>
+                      <strong>Base Experience:</strong>{" "}
+                      {selectedPokemon.base_experience}
+                    </p>
+                    <p>
+                      <strong>Height:</strong> {selectedPokemon.height}
+                    </p>
+                    <p>
+                      <strong>Weight:</strong> {selectedPokemon.weight}
+                    </p>
+                    <p className="capitalize">
+                      <strong>Abilities:</strong>{" "}
+                      {selectedPokemon.abilities
+                        .map((a) => a.ability.name)
+                        .join(", ")}
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {selectedPokemon.types.map(({ type }) => (
+                        <span
+                          key={type.name}
+                          className="px-3 py-1 rounded-full bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-700 text-white font-semibold capitalize shadow-lg"
+                        >
+                          {type.name}
+                        </span>
+                      ))}
                     </div>
-                  )}
-
-                  <div className="mt-6">
-                    <audio controls className="w-full rounded-lg shadow-inner focus:outline-none focus:ring-2 focus:ring-pink-400">
-                      <source
-                        src={`https://raw.githubusercontent.com/PokeAPI/cries/main/cries/pokemon/latest/${selectedPokemon.id}.ogg`}
-                        type="audio/ogg"
-                      />
-                      Your browser does not support the audio element.
-                    </audio>
                   </div>
-                </div>
+                )}
+
+                {activeTab === "moves" && (
+                  <div className="max-h-48 overflow-y-auto text-gray-800 text-base">
+                    <h3 className="font-semibold mb-2">Moves (First 20):</h3>
+                    <ul className="list-disc list-inside space-y-1 max-h-48 overflow-y-auto">
+                      {selectedPokemon.moves.slice(0, 20).map(({ move }) => (
+                        <li key={move.name} className="capitalize">
+                          {move.name}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {activeTab === "more-info" && (
+                  <div className="text-gray-800">
+                    <h3 className="font-semibold mb-2">More Info</h3>
+                    <p>
+                      <strong>Habitat:</strong>{" "}
+                      {selectedSpecies.habitat
+                        ? selectedSpecies.habitat.name.charAt(0).toUpperCase() +
+                          selectedSpecies.habitat.name.slice(1)
+                        : "Unknown"}
+                    </p>
+                    <p>
+                      <strong>Generation:</strong>{" "}
+                      {selectedSpecies.generation.name
+                        .replace("generation-", "Generation ")
+                        .toUpperCase()}
+                    </p>
+                    <p>
+                      <strong>Growth Rate:</strong>{" "}
+                      {selectedSpecies.growth_rate.name
+                        .replace("-", " ")
+                        .toUpperCase()}
+                    </p>
+                    <p>
+                      <strong>Color:</strong>{" "}
+                      {selectedSpecies.color.name.charAt(0).toUpperCase() +
+                        selectedSpecies.color.name.slice(1)}
+                    </p>
+                    <p>
+                      <strong>Egg Groups:</strong>{" "}
+                      {selectedSpecies.egg_groups
+                        .map(
+                          (group) =>
+                            group.name.charAt(0).toUpperCase() + group.name.slice(1)
+                        )
+                        .join(", ")}
+                    </p>
+                    <p>
+                      <strong>Shape:</strong>{" "}
+                      {selectedSpecies.shape.name.charAt(0).toUpperCase() +
+                        selectedSpecies.shape.name.slice(1)}
+                    </p>
+                    <p className="mt-4 italic text-sm">
+                      Note: More info is from the Pokémon species endpoint.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>
