@@ -44,6 +44,7 @@ export default function App() {
   const [filterTab, setFilterTab] = useState("all");
   const [basicStats, setBasicStats] = useState({});
 
+  // Fetch all Pokémon, species, mega sprites and types
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=1118")
       .then((res) => res.json())
@@ -51,6 +52,7 @@ export default function App() {
         setAllPokemons(data.results);
         setDisplayedPokemons(data.results.slice(0, 100));
 
+        // Fetch species + mega sprites mapping
         const speciesAndMega = await Promise.all(
           data.results.map(async (p) => {
             const pokemonRes = await fetch(p.url);
@@ -58,6 +60,7 @@ export default function App() {
             const speciesRes = await fetch(pokemon.species.url);
             const species = await speciesRes.json();
 
+            // Find mega sprites varieties
             const megaForms = await Promise.all(
               species.varieties
                 .filter((v) => v.pokemon.name.toLowerCase().includes("mega"))
@@ -91,6 +94,7 @@ export default function App() {
         setSpeciesData(speciesMap);
         setMegaSprites(megaSpriteMap);
 
+        // Load types
         const typesRes = await fetch("https://pokeapi.co/api/v2/type");
         const typesData = await typesRes.json();
         const typesMap = {};
@@ -101,6 +105,7 @@ export default function App() {
       });
   }, []);
 
+  // Filter Pokémon based on filters and search
   useEffect(() => {
     let filtered = allPokemons;
 
@@ -113,7 +118,6 @@ export default function App() {
         (p) => speciesData[p.name] && speciesData[p.name].is_mythical
       );
     } else if (filterTab === "mega") {
-      // Filter only names that exactly end with "-mega" (case-insensitive)
       filtered = filtered.filter((p) =>
         p.name.toLowerCase().endsWith("-mega")
       );
@@ -153,6 +157,7 @@ export default function App() {
     typesData,
   ]);
 
+  // Fetch basic stats for hover overlays (cached)
   const fetchBasicStats = (url, name) => {
     if (basicStats[name]) return;
     fetch(url)
@@ -168,6 +173,7 @@ export default function App() {
       });
   };
 
+  // Fetch full pokemon + species details for modal
   const fetchPokemonDetails = (url) => {
     setLoadingDetails(true);
     fetch(url)
@@ -190,6 +196,7 @@ export default function App() {
     setSelectedSpecies(null);
   };
 
+  // Glitter effect classes based on rarity
   const getGlitterClass = (name) => {
     if (!speciesData[name]) return "glitter-default";
     if (speciesData[name].is_legendary) return "glitter-gold";
@@ -198,8 +205,8 @@ export default function App() {
     return "glitter-default";
   };
 
+  // Get Pokémon sprite, preferring mega form artwork in mega tab
   const getSpriteUrl = (name, pokemonUrl) => {
-    // Mega sprites fallback - show base official artwork if mega or base sprite missing
     if (filterTab === "mega" && megaSprites[name]) {
       return megaSprites[name];
     }
@@ -208,17 +215,17 @@ export default function App() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto relative font-sans bg-gradient-to-tr from-purple-600 via-pink-600 to-red-600 min-h-screen text-gray-900">
-      <h1 className="text-5xl font-extrabold mb-1 text-center text-white drop-shadow-lg">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto relative font-sans bg-gradient-to-tr from-purple-600 via-pink-600 to-red-600 min-h-screen text-gray-900">
+      <h1 className="text-4xl sm:text-5xl font-extrabold mb-1 text-center text-white drop-shadow-lg">
         Pokédex
       </h1>
-      {/* Total Pokémon count */}
-      <p className="mb-6 text-center text-white font-semibold text-lg">
+
+      <p className="mb-6 text-center text-white font-semibold text-md sm:text-lg">
         Total Pokémon: {allPokemons.length}
       </p>
 
       {/* Filter Tabs */}
-      <nav className="flex justify-center space-x-4 mb-6 flex-wrap gap-2">
+      <nav className="flex flex-wrap justify-center space-x-2 space-y-2 mb-6">
         {FILTER_TABS.map((tab) => (
           <button
             key={tab.key}
@@ -226,7 +233,7 @@ export default function App() {
               setFilterTab(tab.key);
               if (tab.key !== "type") setSelectedType(null);
             }}
-            className={`px-6 py-2 rounded-full font-semibold text-white uppercase tracking-wide transition ${
+            className={`px-4 sm:px-6 py-2 rounded-full font-semibold text-white uppercase tracking-wide transition ${
               filterTab === tab.key
                 ? "bg-pink-600 shadow-lg"
                 : "bg-pink-400 hover:bg-pink-600"
@@ -237,7 +244,7 @@ export default function App() {
         ))}
         {filterTab === "type" && (
           <select
-            className="ml-4 px-3 py-2 rounded-lg font-semibold text-gray-900"
+            className="ml-0 sm:ml-4 px-3 py-2 rounded-lg font-semibold text-gray-900 w-full sm:w-auto"
             onChange={(e) => setSelectedType(e.target.value)}
             value={selectedType || ""}
           >
@@ -254,7 +261,7 @@ export default function App() {
       </nav>
 
       {/* Search Bar */}
-      <div className="max-w-md mx-auto mb-8">
+      <div className="max-w-md mx-auto mb-8 px-2 sm:px-0">
         <input
           type="text"
           placeholder="Search Pokémon..."
@@ -265,7 +272,7 @@ export default function App() {
       </div>
 
       {/* Pokémon Grid */}
-      <div className="grid grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
         {displayedPokemons.length === 0 && (
           <p className="text-center col-span-5 text-white font-semibold">
             No Pokémon found.
@@ -316,8 +323,8 @@ export default function App() {
             className="fixed inset-0 bg-gradient-to-tr from-purple-900 via-pink-900 to-red-900 bg-opacity-90 backdrop-blur-md z-40"
             onClick={closeModal}
           />
-          <div className="fixed inset-0 flex items-center justify-center z-50 p-6">
-            <div className="relative bg-gradient-to-br from-purple-300 via-pink-300 to-red-200 rounded-3xl shadow-2xl max-w-sm w-full max-h-[90vh] overflow-y-auto text-gray-900 p-6 font-sans border-8 border-pink-500 flex flex-col items-center">
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 sm:p-6">
+            <div className="relative bg-gradient-to-br from-purple-300 via-pink-300 to-red-200 rounded-3xl shadow-2xl max-w-full sm:max-w-md md:max-w-lg max-h-[90vh] overflow-y-auto text-gray-900 p-4 sm:p-6 font-sans border-8 border-pink-500 flex flex-col items-center">
               <button
                 onClick={closeModal}
                 className="absolute top-4 right-4 text-pink-700 hover:text-red-700 transition text-4xl font-bold z-50"
@@ -326,7 +333,7 @@ export default function App() {
                 &times;
               </button>
 
-              <div className="relative w-48 h-48 rounded-xl shadow-lg border-4 border-pink-700 overflow-hidden mb-4 bg-white flex justify-center items-center">
+              <div className="relative w-40 sm:w-48 h-40 sm:h-48 rounded-xl shadow-lg border-4 border-pink-700 overflow-hidden mb-4 bg-white flex justify-center items-center">
                 <img
                   src={
                     selectedPokemon.sprites.other["official-artwork"]
@@ -349,28 +356,29 @@ export default function App() {
                 </div>
               </div>
 
-              <h2 className="text-3xl font-extrabold capitalize text-pink-700 drop-shadow-md mb-3">
+              <h2 className="text-2xl sm:text-3xl font-extrabold capitalize text-pink-700 drop-shadow-md mb-3 text-center sm:text-left w-full">
                 {selectedPokemon.name}
               </h2>
 
               {/* Tabs */}
-              <nav className="flex w-full justify-around border-b-4 border-pink-700 mb-4">
+              <nav className="flex flex-wrap w-full justify-around border-b-4 border-pink-700 mb-4">
                 {["stats", "details", "moves", "more-info"].map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`flex-1 py-2 text-center font-semibold ${
+                    className={`py-2 px-4 font-semibold text-center w-1/2 sm:w-auto ${
                       activeTab === tab
                         ? "text-white bg-pink-700 rounded-t-lg"
                         : "text-pink-700 hover:bg-pink-600 hover:text-white"
                     } transition`}
                   >
-                    {tab.charAt(0).toUpperCase() + tab.slice(1).replace("-", " ")}
+                    {tab.charAt(0).toUpperCase() +
+                      tab.slice(1).replace("-", " ")}
                   </button>
                 ))}
               </nav>
 
-              <div className="w-full min-h-[220px] px-2">
+              <div className="w-full min-h-[220px] px-2 sm:px-0">
                 {activeTab === "stats" && (
                   <>
                     <div>
