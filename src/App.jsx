@@ -32,6 +32,7 @@ const FILTER_TABS = [
 export default function App() {
   const [allPokemons, setAllPokemons] = useState([]);
   const [speciesData, setSpeciesData] = useState({});
+  const [megaSprites, setMegaSprites] = useState({});
   const [displayedPokemons, setDisplayedPokemons] = useState([]);
   const [selectedPokemon, setSelectedPokemon] = useState(null);
   const [selectedSpecies, setSelectedSpecies] = useState(null);
@@ -43,42 +44,64 @@ export default function App() {
   const [filterTab, setFilterTab] = useState("all");
   const [basicStats, setBasicStats] = useState({});
 
-  // Fetch all pokemons and species on mount
+  // Fetch pokemons + species + mega sprites + types
   useEffect(() => {
     fetch("https://pokeapi.co/api/v2/pokemon?limit=1118")
       .then((res) => res.json())
-      .then((data) => {
+      .then(async (data) => {
         setAllPokemons(data.results);
         setDisplayedPokemons(data.results.slice(0, 100));
-        Promise.all(
-          data.results.map((p) =>
-            fetch(p.url)
-              .then((res) => res.json())
-              .then((pokemon) =>
-                fetch(pokemon.species.url).then((res) => res.json())
-              )
-          )
-        ).then((speciesArr) => {
-          const speciesMap = {};
-          speciesArr.forEach((species) => {
-            speciesMap[species.name] = species;
-          });
-          setSpeciesData(speciesMap);
-        });
 
-        fetch("https://pokeapi.co/api/v2/type")
-          .then((res) => res.json())
-          .then((data) => {
-            const typesMap = {};
-            data.results.forEach((type) => {
-              typesMap[type.name] = type.url;
-            });
-            setTypesData(typesMap);
-          });
+        // Fetch species + mega sprites mapping
+        const speciesAndMega = await Promise.all(
+          data.results.map(async (p) => {
+            const pokemonRes = await fetch(p.url);
+            const pokemon = await pokemonRes.json();
+            const speciesRes = await fetch(pokemon.species.url);
+            const species = await speciesRes.json();
+
+            // Find mega sprites varieties
+            const megaForms = await Promise.all(
+              species.varieties
+                .filter((v) => v.pokemon.name.includes("mega"))
+                .map(async (v) => {
+                  const megaRes = await fetch(v.pokemon.url);
+                  const megaData = await megaRes.json();
+                  return {
+                    name: v.pokemon.name,
+                    sprite:
+                      megaData.sprites.other["official-artwork"]
+                        .front_default || megaData.sprites.front_default,
+                  };
+                })
+            );
+            return { species, megaForms, name: p.name };
+          })
+        );
+        const speciesMap = {};
+        const megaSpriteMap = {};
+        speciesAndMega.forEach(({ species, megaForms, name }) => {
+          speciesMap[name] = species;
+          if (megaForms.length > 0) {
+            // store first mega form sprite for the base
+            megaSpriteMap[name] = megaForms[0].sprite;
+          }
+        });
+        setSpeciesData(speciesMap);
+        setMegaSprites(megaSpriteMap);
+
+        // Load types
+        const typesRes = await fetch("https://pokeapi.co/api/v2/type");
+        const typesData = await typesRes.json();
+        const typesMap = {};
+        typesData.results.forEach((type) => {
+          typesMap[type.name] = type.url;
+        });
+        setTypesData(typesMap);
       });
   }, []);
 
-  // Filter logic including Mega Evolutions fix
+  // Filter pokemons with mega, legendary, mythical, type, search
   useEffect(() => {
     let filtered = allPokemons;
 
@@ -91,14 +114,9 @@ export default function App() {
         (p) => speciesData[p.name] && speciesData[p.name].is_mythical
       );
     } else if (filterTab === "mega") {
-      filtered = filtered.filter((p) => {
-        const sp = speciesData[p.name];
-        if (!sp) return false;
-        // Check if any variety's pokemon name includes "mega"
-        return sp.varieties.some((v) =>
-          v.pokemon.name.toLowerCase().includes("mega")
-        );
-      });
+      filtered = filtered.filter(
+        (p) => megaSprites[p.name] !== undefined
+      );
     } else if (filterTab === "type" && selectedType) {
       fetch(typesData[selectedType])
         .then((res) => res.json())
@@ -115,7 +133,7 @@ export default function App() {
                 )
           );
         });
-      return; // avoid overwrite below awaiting async fetch
+      return;
     }
 
     if (searchTerm.trim() !== "") {
@@ -123,6 +141,7 @@ export default function App() {
         p.name.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
+
     setDisplayedPokemons(filtered);
   }, [
     filterTab,
@@ -130,9 +149,11 @@ export default function App() {
     searchTerm,
     allPokemons,
     speciesData,
+    megaSprites,
     typesData,
   ]);
 
+  // Fetch hover basic stats caching
   const fetchBasicStats = (url, name) => {
     if (basicStats[name]) return;
     fetch(url)
@@ -148,6 +169,7 @@ export default function App() {
       });
   };
 
+  // Fetch detailed info + species for modal
   const fetchPokemonDetails = (url) => {
     setLoadingDetails(true);
     fetch(url)
@@ -170,10 +192,11 @@ export default function App() {
     setSelectedSpecies(null);
   };
 
+  // Determine glitter CSS class based on rarity
   const getGlitterClass = (name) => {
     if (!speciesData[name]) return "glitter-default";
     if (speciesData[name].is_legendary) return "glitter-gold";
-    if (speciesData[name].is_mythical) return "glitter-pink";
+    if (speciesData[name].is_mythical) return "glitter-mythical";
     if (basicStats[name] && basicStats[name].hp > 150) return "glitter-blue";
     return "glitter-default";
   };
@@ -184,7 +207,7 @@ export default function App() {
         Pokédex
       </h1>
 
-      {/* Tabs */}
+      {/* Filter Tabs */}
       <nav className="flex justify-center space-x-4 mb-6 flex-wrap gap-2">
         {FILTER_TABS.map((tab) => (
           <button
@@ -202,7 +225,6 @@ export default function App() {
             {tab.label}
           </button>
         ))}
-
         {filterTab === "type" && (
           <select
             className="ml-4 px-3 py-2 rounded-lg font-semibold text-gray-900"
@@ -241,7 +263,12 @@ export default function App() {
         )}
         {displayedPokemons.map(({ name, url }) => {
           const id = url.split("/").filter(Boolean).pop();
-          const spriteUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
+          const isMegaTab = filterTab === "mega";
+          // Use Mega sprite if available and mega tab active
+          const spriteUrl =
+            isMegaTab && megaSprites[name]
+              ? megaSprites[name]
+              : `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`;
           const stats = basicStats[name] || {};
           const glitterClass = getGlitterClass(name);
 
