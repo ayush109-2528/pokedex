@@ -2,7 +2,7 @@ Pokédex - React + Vite
 
 A fully responsive Pokédex built with React, Vite, and Tailwind CSS using the PokeAPI. Features glitter-animated cards, advanced filtering, hover stats, and Pokémon trading card-style modals.
 
-[![Pokédex Demo](https://via.placeholder.com/800x400/8B5CF6/FFFFFF?text=Pok%C3%A9dex## ✨ Features
+ ✨ Features
 
     Responsive Design: Mobile-first layout (1-5 columns based on screen size)
 
@@ -16,7 +16,7 @@ A fully responsive Pokédex built with React, Vite, and Tailwind CSS using the P
 
     Trading Card Modal: Stats, Details, Moves, More Info tabs
 
-    Pokémon Cries: Audio player labeled "Sound of Pokémon" (Stats tab only)
+    Pokémon Cries: Audio player labeled "Sound of Pokémon" 
 
     Total Count: Live Pokémon counter (1,118 total)
 
@@ -31,13 +31,6 @@ A fully responsive Pokédex built with React, Vite, and Tailwind CSS using the P
     Styling: Tailwind CSS + Custom CSS animations
 
     Deployment: Vercel, Netlify, GitHub Pages
-
-📱 Screenshots
-Desktop	Mobile
-![Desktop](https://via.placeholder.com/800x400/8B5CF6/FFFFFF?text=Desktop+Viewhttps://via.placeholder.com/400x800/FF69B4/FFFFFF?text=Mobile+ViewTrading Card)	Mega Filter
----------------------	-------------
-![Modal](https://via.placeholder.com/400x600/FFD700/000000?text=Trading+Cardhttps://via.placeholder.com/800x400/FF4500/FFFFFF?text=Mega+Evolutions Start	
-Prerequisites
 
     Node.js 18+
 
