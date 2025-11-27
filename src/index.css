@@ -1,0 +1,70 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes glitterPink {
+  0%, 100% {background-position: 0% 50%;}
+  50% {background-position: 100% 50%;}
+}
+
+@keyframes glitterGold {
+  0%, 100% {background-position: 0% 50%;}
+  50% {background-position: 100% 50%;}
+}
+
+@keyframes glitterBlue {
+  0%, 100% {background-position: 0% 50%;}
+  50% {background-position: 100% 50%;}
+}
+
+.glitter-pink {
+  background: linear-gradient(270deg, #f0a6ca, #b774da, #e08ee0, #f0a6ca, #b774da);
+  background-size: 600% 600%;
+  animation: glitterPink 6s ease infinite;
+  border: 2px solid #f0a6ca;
+  box-shadow: 0 0 10px #f0a6ca, 0 0 15px #b774da;
+  border-radius: 1rem;
+  transition: box-shadow 0.3s ease;
+}
+.glitter-pink:hover {
+  box-shadow: 0 0 20px #f0a6ca, 0 0 30px #e08ee0, 0 0 40px #b774da;
+}
+
+.glitter-gold {
+  background: linear-gradient(270deg, #f7e1a0, #ffd700, #f7e1a0, #ffd700);
+  background-size: 600% 600%;
+  animation: glitterGold 6s ease infinite;
+  border: 2px solid #ffd700;
+  box-shadow: 0 0 15px #ffd700, 0 0 20px #f7e1a0;
+  border-radius: 1rem;
+  transition: box-shadow 0.3s ease;
+}
+.glitter-gold:hover {
+  box-shadow: 0 0 30px #ffd700, 0 0 40px #f7e1a0, 0 0 50px #ffd700;
+}
+
+.glitter-blue {
+  background: linear-gradient(270deg, #7ad0f7, #4a90e2, #7ad0f7);
+  background-size: 600% 600%;
+  animation: glitterBlue 6s ease infinite;
+  border: 2px solid #4a90e2;
+  box-shadow: 0 0 10px #7ad0f7, 0 0 15px #4a90e2;
+  border-radius: 1rem;
+  transition: box-shadow 0.3s ease;
+}
+.glitter-blue:hover {
+  box-shadow: 0 0 20px #7ad0f7, 0 0 30px #4a90e2, 0 0 40px #7ad0f7;
+}
+
+.glitter-default {
+  background: linear-gradient(270deg, #f0a6ca, #b774da, #e08ee0, #f0a6ca, #b774da);
+  background-size: 600% 600%;
+  animation: glitterPink 6s ease infinite;
+  border: 2px solid #f0a6ca;
+  box-shadow: 0 0 10px #f0a6ca, 0 0 15px #b774da;
+  border-radius: 1rem;
+  transition: box-shadow 0.3s ease;
+}
+.glitter-default:hover {
+  box-shadow: 0 0 20px #f0a6ca, 0 0 30px #e08ee0, 0 0 40px #b774da;
+}
