@@ -143,3 +143,35 @@
 .glitter-default:hover {
   box-shadow: 0 0 20px #f0a6ca, 0 0 30px #e08ee0, 0 0 40px #b774da;
 }
+
+
+/* Hide scrollbar for mobile tabs */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Glitter container enhancement */
+.glitter-container {
+  position: relative;
+  overflow: hidden;
+}
+.glitter-container::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.1) 50%, transparent 70%);
+  animation: glitter 3s linear infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+@keyframes glitter {
+  0% { transform: translateX(-100%) translateY(-100%) rotate(0deg); }
+  100% { transform: translateX(100%) translateY(100%) rotate(360deg); }
+}
