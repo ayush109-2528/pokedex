@@ -10,6 +10,7 @@ const FILTER_TABS = [
   { key: "mega", label: "Mega Evolutions" },
   { key: "gmax", label: "Gigantamax" },
   { key: "type", label: "Type" },
+  { key: "ability", label: "Battle Armor" }, // 🆕 NEW ABILITY TAB
 ];
 
 const Home = () => {
@@ -25,10 +26,12 @@ const Home = () => {
   const [displayedPokemons, setDisplayedPokemons] = useState([]);
   const [selectedType, setSelectedType] = useState(null);
   const [currentTypeData, setCurrentTypeData] = useState(null);
+  const [battleArmorData, setBattleArmorData] = useState(null); // 🆕 Battle Armor state
   const [filterTab, setFilterTab] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [showSearch, setShowSearch] = useState(false);
   const [showTypeDetails, setShowTypeDetails] = useState(true);
+  const [showAbilityDetails, setShowAbilityDetails] = useState(true); // 🆕 Ability details toggle
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const navigate = useNavigate();
@@ -42,10 +45,32 @@ const Home = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // ... keep all existing filter logic (same as before)
+  // 🆕 Fetch Battle Armor data
+  useEffect(() => {
+    if (filterTab === "ability") {
+      fetch("https://pokeapi.co/api/v2/ability/battle-armor")
+        .then((res) => res.json())
+        .then((data) => {
+          setBattleArmorData(data);
+          // Filter Pokémon that have Battle Armor
+          const battleArmorPokemon = data.pokemon.map((p) => p.pokemon.name);
+          let filtered = allPokemons.filter((p) =>
+            battleArmorPokemon.includes(p.name)
+          );
+          if (searchTerm.trim()) {
+            filtered = filtered.filter((p) =>
+              p.name.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+          }
+          setDisplayedPokemons(filtered);
+        })
+        .catch((err) => console.error("Error fetching Battle Armor:", err));
+    }
+  }, [filterTab, allPokemons, searchTerm]);
 
   const filteredPokemons = useMemo(() => {
-    if (filterTab === "type") return displayedPokemons;
+    if (filterTab === "type" || filterTab === "ability")
+      return displayedPokemons;
 
     let filtered = allPokemons;
     if (filterTab === "legendary") {
@@ -83,7 +108,7 @@ const Home = () => {
           setDisplayedPokemons(filteredByType);
         })
         .catch((err) => console.error("Error fetching type:", err));
-    } else {
+    } else if (filterTab !== "ability") {
       setCurrentTypeData(null);
       setDisplayedPokemons(filteredPokemons);
     }
@@ -107,6 +132,10 @@ const Home = () => {
     document
       .getElementById("type-detail-panel")
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollToAbilityDetails = () =>
+    document
+      .getElementById("ability-detail-panel")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   const handleSearchChange = (e) => {
     if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -124,6 +153,15 @@ const Home = () => {
       </div>
     );
   }
+
+  // 🆕 Get English effect for Battle Armor
+  const getBattleArmorEffect = () => {
+    if (!battleArmorData?.effect_entries) return "";
+    const englishEffect = battleArmorData.effect_entries.find(
+      (entry) => entry.language.name === "en"
+    );
+    return englishEffect?.effect || "Protects against critical hits.";
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-600 via-pink-500 to-orange-500 text-gray-900 relative overflow-hidden">
@@ -158,7 +196,7 @@ const Home = () => {
                   }}
                   className={`px-2.5 sm:px-3 lg:px-4 py-1.5 sm:py-2 rounded-full font-bold text-white uppercase tracking-wider text-xs sm:text-sm transition-all duration-300 flex-shrink-0 shadow-lg backdrop-blur-sm whitespace-nowrap ${
                     filterTab === tab.key
-                      ? "bg-gradient-to-r from-pink-600 to-purple-600 scale-105 ring-4 ring-pink-400/50 shadow-pink-500/50 glitter-gold"
+                      ? "bg-gradient-to-r from-pink-600 to-purple-600 scale-105 ring-4 ring-pink-400/50 shadow-pink-500/50"
                       : "bg-white/20 hover:bg-pink-500/80 hover:scale-105 hover:shadow-2xl hover:shadow-pink-500/30"
                   }`}
                 >
@@ -230,9 +268,48 @@ const Home = () => {
 
       {/* Main Content */}
       <div className="pt-28 sm:pt-36 lg:pt-44 pb-24">
+        {/* 🆕 BATTLE ARMOR HEADER */}
+        {filterTab === "ability" && battleArmorData && (
+          <div className="mb-8 p-6 sm:p-8 max-w-6xl mx-auto bg-gradient-to-r from-gray-100/95 via-blue-50/90 to-slate-50/90 backdrop-blur-xl rounded-3xl shadow-2xl border-4 border-blue-500/60 sticky top-4 z-20 animate-fade-in">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-gray-600 via-blue-600 to-slate-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <span className="text-2xl font-bold text-white">🛡️</span>
+                </div>
+                <div>
+                  <h2 className="text-4xl lg:text-5xl font-black capitalize bg-gradient-to-r from-gray-800 via-blue-800 to-slate-800 bg-clip-text text-transparent drop-shadow-2xl">
+                    Battle Armor
+                  </h2>
+                  <p className="text-xl text-gray-700 font-semibold mt-1">
+                    {battleArmorData.pokemon.length} Pokémon • Gen III Ability
+                  </p>
+                  <p className="text-lg mt-2 text-gray-600 max-w-2xl leading-relaxed">
+                    {getBattleArmorEffect()}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 flex-wrap">
+                <button
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-slate-600 text-white rounded-xl shadow-xl font-bold text-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 ring-2 ring-blue-400"
+                  onClick={scrollToAbilityDetails}
+                >
+                  👥 View Pokémon List
+                </button>
+                <button
+                  className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+                  onClick={() => setShowAbilityDetails(!showAbilityDetails)}
+                >
+                  {showAbilityDetails ? "− Hide Details" : "+ Show Details"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ✨ TYPE HEADER - PERFECTLY CENTERED */}
         {filterTab === "type" && currentTypeData && selectedType && (
           <div className="mb-8 p-6 sm:p-8 max-w-6xl mx-auto bg-gradient-to-r from-white/95 via-pink-50/90 to-purple-50/90 backdrop-blur-xl rounded-3xl shadow-2xl border-4 border-pink-500/60 sticky top-4 z-20 animate-fade-in">
+            {/* ... existing type header code ... */}
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-6">
               <div className="flex items-center gap-4">
                 <div className="w-16 h-16 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-2xl flex items-center justify-center shadow-lg">
@@ -244,26 +321,19 @@ const Home = () => {
                   <h2 className="text-4xl lg:text-5xl font-black capitalize bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent drop-shadow-2xl">
                     {selectedType} Type
                   </h2>
-
                   <p className="text-xl text-gray-700 font-semibold mt-1">
                     {currentTypeData.pokemon.length} Pokémon •
                     {currentTypeData.moves.length} Moves
                   </p>
                 </div>
               </div>
-
               <div className="flex gap-3 flex-wrap">
                 <button
                   className="px-6 py-3 bg-gradient-to-r from-pink-600 to-purple-600 text-white rounded-xl shadow-xl font-bold text-lg hover:shadow-2xl hover:scale-105 transition-all duration-300 ring-2 ring-pink-400"
-                  onClick={() =>
-                    document
-                      .getElementById("type-detail-panel")
-                      ?.scrollIntoView({ behavior: "smooth" })
-                  }
+                  onClick={scrollToTypeDetails}
                 >
                   ↓ View Full Details
                 </button>
-
                 <button
                   className="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
                   onClick={() => setShowTypeDetails(!showTypeDetails)}
@@ -274,6 +344,7 @@ const Home = () => {
             </div>
           </div>
         )}
+
         {/* Pokémon Grid */}
         <div className="px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6 mb-12 lg:mb-16">
@@ -302,7 +373,46 @@ const Home = () => {
           </div>
         </div>
 
-        {/* 📊 FULL TYPE DETAILS - Mobile toggle only */}
+        {/* 🆕 BATTLE ARMOR DETAILS */}
+        {filterTab === "ability" && battleArmorData && showAbilityDetails && (
+          <section
+            id="ability-detail-panel"
+            className="px-4 sm:px-6 lg:px-8 pb-24"
+          >
+            <div className="max-w-7xl mx-auto space-y-8 lg:space-y-12">
+              <div className="p-8 sm:p-12 bg-gradient-to-br from-gray-50/80 to-blue-50/80 rounded-3xl shadow-2xl border-4 border-blue-200/50">
+                <h3 className="text-3xl sm:text-4xl lg:text-5xl font-black text-gray-800 mb-8 flex items-center gap-4 justify-center">
+                  <span className="w-12 h-12 bg-gradient-to-r from-gray-600 to-blue-600 rounded-2xl flex items-center justify-center text-white text-2xl font-bold">
+                    🛡️
+                  </span>
+                  Pokémon with Battle Armor
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 max-h-96 overflow-y-auto p-6 rounded-3xl bg-white/60 scrollbar-thin">
+                  {battleArmorData.pokemon
+                    .slice(0, 24)
+                    .map(({ pokemon, is_hidden, slot }) => (
+                      <div
+                        key={pokemon.name}
+                        className="group p-4 bg-gradient-to-br from-blue-100 to-slate-100 rounded-2xl hover:from-blue-200 hover:shadow-xl transition-all cursor-pointer border-2 border-white/50 hover:border-blue-300"
+                        onClick={() => navigate(`/pokemon/${pokemon.name}`)}
+                      >
+                        <div className="font-bold text-sm capitalize text-gray-800 group-hover:text-blue-800 mb-2 truncate">
+                          {pokemon.name
+                            .replace(/-/g, " ")
+                            .replace(/\b\w/g, (l) => l.toUpperCase())}
+                        </div>
+                        <div className="text-xs text-gray-600">
+                          {is_hidden ? "🕶️ Hidden" : `Slot ${slot}`}
+                        </div>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* 📊 FULL TYPE DETAILS */}
         {filterTab === "type" &&
           currentTypeData &&
           selectedType &&
@@ -369,8 +479,6 @@ const Home = () => {
                     </div>
                   </div>
                 </div>
-
-           
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 p-6 sm:p-8 bg-gradient-to-r from-pink-100/50 to-purple-100/50 rounded-3xl border-4 border-white/50 shadow-2xl">
                   <div className="text-center">
                     <div className="text-4xl sm:text-5xl font-black text-pink-600 mb-3 drop-shadow-xl">
@@ -467,7 +575,7 @@ const Home = () => {
   );
 };
 
-// Fixed DamageRelationRow with perfect alignment
+// Your existing DamageRelationRow component (unchanged)
 const DamageRelationRow = ({ label, types, variant = "double" }) => {
   if (!types?.length) return null;
 
